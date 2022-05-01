@@ -5,14 +5,14 @@ function Update-TcgPricing {
   ) #END block::param
 
   process {
-    $UpdatedDir = "J:\MTG\Seller\PriceUpdates"
-    if ( -not(Test-Path $UpdatedDir) ) {
-      throw ( "Failed to locate the Updated folder : " + $UpdatedDir )
-    }
-
     $DownloadsPath = "C:\Users\jcb55\Downloads"
     if ( -not(Test-Path $DownloadsPath) ) {
       throw ( "Failed to find the Downloads folder : " + $DownloadsPath )
+    }
+
+    $UpdatedDir = "J:\MTG\Seller\PriceUpdates"
+    if ( -not(Test-Path $UpdatedDir) ) {
+      throw ( "Failed to locate the Updated folder : " + $UpdatedDir )
     }
 
     $TcgExportFile = ( Get-ChildItem $DownloadsPath\TCG*Pricing*csv |
@@ -70,12 +70,20 @@ function Update-TcgPricing {
     }
 
     if ( -not($Result.Creation) ) {
-      Write-Warning ( "Failed to create an updated pricing CSV file")
+      Write-Warning ( "Failed to create an updated pricing CSV file" )
     } else {
       Remove-Item $TcgExportFile
+      Invoke-Item $UpdatedDir
     }
 
     Write-Output $Result
   } #END block::process
 }
 
+<#
+$Aliases_MTG_UpdateTcgPricing = @('UTP')
+
+$Aliases_MTG_UpdateTcgPricing | ForEach-Object {
+    Set-Alias -Name $_ -Value Update-TcgPricing
+}
+#>
