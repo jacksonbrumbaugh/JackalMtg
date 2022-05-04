@@ -1,7 +1,11 @@
 function Update-TcgPricing {
   [CmdletBinding()]
   param(
-    [double]$Discount
+    [double]$Discount = 10,
+
+    [double]
+    [Alias("Ship", "Pkg")]
+    $ShippingCost = 0.86
   ) #END block::param
 
   process {
@@ -45,16 +49,20 @@ function Update-TcgPricing {
 
     $Name = "Product Name"
     $TcgMarket = "TCG Market Price"
+    $TcgLow = "TCG Low Price With Shipping"
     $MyPrice = "TCG MarketPlace Price"
 
     $InventoryList | ForEach-Object {
       $MarketPrice = $_.$TcgMarket -as [double]
+      $LowPrice = $_.$TcgLow -as [double]
       if ( -not($MarketPrice) ) {
         Write-Warning ( "Failed to grab TCG Market Price for " + $_.$Name )
         continue
       }
 
-      $NewPrice = [Math]::Floor( 100 * $Multiplier * $MarketPrice ) / 100
+      $DiscountedPrice = [Math]::Floor( 100 * $Multiplier * $MarketPrice ) / 100
+
+      $NewPrice = [Math]::Max( $DiscountedPrice, ($LowPrice - $ShippingCost) )
 
       $_.$MyPrice = $NewPrice
     }
