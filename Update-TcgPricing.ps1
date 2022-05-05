@@ -9,15 +9,25 @@ function Update-TcgPricing {
   ) #END block::param
 
   process {
-    $DownloadsPath = "C:\Users\jcb55\Downloads"
+    $ParamFilePath = Join-Path $PSScriptRoot "JackalMtgParams.json"
+
+    if ( -not(Test-Path $ParamFilePath) ) {
+      throw ( "Failed to find the parameter file : " + $ParamFilePath )
+    }
+
+    $Params = (Get-Content $ParamFilePath) | ConvertFrom-JSON
+
+    $DownloadsPath = $Params.DownloadsDir
     if ( -not(Test-Path $DownloadsPath) ) {
       throw ( "Failed to find the Downloads folder : " + $DownloadsPath )
     }
 
-    $UpdatedDir = "J:\MTG\Seller\PriceUpdates"
+    $UpdatedDir = $Params.UpdatesDir
     if ( -not(Test-Path $UpdatedDir) ) {
-      throw ( "Failed to locate the Updated folder : " + $UpdatedDir )
+      throw ( "Failed to locate the Updates folder : " + $UpdatedDir )
     }
+
+    $NowSet = $Params.CurrentSet
 
     $TcgExportFile = ( Get-ChildItem $DownloadsPath\TCG*Pricing*csv |
       Sort-Object -Descending LastWriteTime | Select-Object -First 1 -ExpandProperty FullName
@@ -47,24 +57,36 @@ function Update-TcgPricing {
 
     Write-Verbose ( "A discount of " + $Discount + " off TCG Market Price will be applied" )
 
-    $Name = "Product Name"
-    $TcgMarket = "TCG Market Price"
-    $TcgLow = "TCG Low Price With Shipping"
-    $MyPrice = "TCG MarketPlace Price"
+    $TcgKeysHash = @{
+      TcgProdName = "Product Name"
+      TcgMktPrice = "TCG Market Price"
+      TcgLowPrice = "TCG Low Price With Shipping"
+      MyPrice     = "TCG MarketPlace Price"
+      SetName     = "Set Name"
+    }
 
     $InventoryList | ForEach-Object {
-      $MarketPrice = $_.$TcgMarket -as [double]
-      $LowPrice = $_.$TcgLow -as [double]
-      if ( -not($MarketPrice) ) {
-        Write-Warning ( "Failed to grab TCG Market Price for " + $_.$Name )
+      $CardName = $_.($TcgKeysHash.TcgProdName)
+      $TcgMktPrice = $_.($TcgKeysHash.TcgMktPrice) -as [double]
+      $TcgLowPrice = $_.($TcgKeysHash.TcgLowPrice) -as [double]
+      $CardSet = $_.($TcgKeysHash.SetName)
+
+      if ( -not($TcgMktPrice) ) {
+        Write-Warning ( "Failed to grab TCG Market Price for " + $CardName )
         continue
       }
 
-      $DiscountedPrice = [Math]::Floor( 100 * $Multiplier * $MarketPrice ) / 100
+      $DiscountPrice = [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
 
-      $NewPrice = [Math]::Max( $DiscountedPrice, ($LowPrice - $ShippingCost) )
+      $TargetPrice = if ( $CardSet -eq $NowSet ) {
+        $TcgMktPrice
+      } else {
+        $DiscountPrice
+      }
 
-      $_.$MyPrice = $NewPrice
+      $NewPrice = [Math]::Max( $TargetPrice, ($TcgLowPrice - $ShippingCost) )
+
+      $_.($TcgKeysHash.MyPrice) = $NewPrice
     }
 
     $UpdatedFileName = "UpdatedPricing_{0}.csv" -f (Get-Date).ToString("yyyy-MM-dd")
