@@ -111,17 +111,18 @@ function Update-TcgPricing {
       $DiscountPrice = [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
 
       $MinChecks = @(
-        @{ Type = "Discounted"; Price = $DiscountPrice },
-        @{ Type = "TCG MKT";    Price = $TcgMktPrice }
+        @{ Type = "TCG MKT";    Price = $TcgMktPrice },
+        @{ Type = "Discounted"; Price = $DiscountPrice }
       )
 
       foreach ( $MinCheck in $MinChecks ) {
+        $Warning = $null
         $CheckPrice = $MinCheck.Price
         $CheckType = $MinCheck.Type
         if ( $CheckPrice -lt $MinimumPrice ) {
-          Write-Warning (
-            $CardName + "would have a " + $CheckType  + " price of " + $CheckPrice +
-            " but the min of " + $MinimumPrice + "was set instead"
+          $Warning = (
+            $CardName + " would have a " + $CheckType  + " price of " + $CheckPrice +
+            " but the min of " + $MinimumPrice + " was used instead"
           )
           if ( $CheckType -eq "Discounted" ) {
             $DiscountPrice = $MinimumPrice
@@ -130,6 +131,10 @@ function Update-TcgPricing {
             $TcgMktPrice = $MinimumPrice
           }
         }
+      }
+
+      if ( $Warning ) {
+        Write-Warning $Warning
       }
 
       $TargetPrice = if ( $CardSet -eq $NowSet ) {
@@ -141,7 +146,7 @@ function Update-TcgPricing {
       $NewPrice = [Math]::Max( $TargetPrice, ($TcgLowPrice - $ShippingCost) )
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
-    }
+    } #END loop::foreach( $Card in $InventoryList )
 
     $DateStamp = (Get-Date).ToString("yyyy-MM-dd")
     $UpdatesFileName = "UpdatedPricing_{0}.csv" -f $DateStamp
