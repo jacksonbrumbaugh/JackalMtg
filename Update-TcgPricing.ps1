@@ -2,8 +2,8 @@ function Update-TcgPricing {
   [CmdletBinding()]
   param(
     [double]
-    [Alias("Off")]
-    $Discount = 10
+    [Alias( "D", "Off" )]
+    $Discount
   ) #END block::param
 
   process {
@@ -18,6 +18,7 @@ function Update-TcgPricing {
     $DownloadsPath = $Params.DownloadsDir
     $UpdatesDir = $Params.UpdatesDir
     $UpdatedDir = $Params.UpdatedDir
+    $ParamDiscount = $Params.UsualDiscount
 
     @(
       $DownloadsPath,
@@ -52,6 +53,10 @@ function Update-TcgPricing {
 
     if ( -not($TcgExportFile) ) {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
+    }
+
+    if ( -not $Discount ) {
+      $Discount = $ParamDiscount
     }
 
     Write-Host "Loading inventory from the CSV file"
@@ -94,6 +99,7 @@ function Update-TcgPricing {
       $CardQty = $Card.($TcgKeysHash.Qty) -as [int]
 
       if ( $CardQty -eq 0 ) {
+        Write-Verbose ( "Skipping " + $CardName + " : 0 qty in stock" )
         continue
       }
 
