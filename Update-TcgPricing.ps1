@@ -55,7 +55,7 @@ function Update-TcgPricing {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
     }
 
-    if ( -not $Discount ) {
+    if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
       $Discount = $ParamDiscount
     }
 
