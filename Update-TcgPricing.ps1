@@ -6,6 +6,10 @@ function Update-TcgPricing {
     $Discount
   ) #END block::param
 
+  begin {
+    function New-BufferLine { Write-Host "" }
+  }
+
   process {
     $ParamFilePath = Join-Path $PSScriptRoot "JackalMtgParams.json"
 
@@ -16,24 +20,34 @@ function Update-TcgPricing {
     $Params = (Get-Content $ParamFilePath) | ConvertFrom-JSON
 
     $DownloadsPath = $Params.DownloadsDir
-    $UpdatesDir = $Params.UpdatesDir
-    $UpdatedDir = $Params.UpdatedDir
+    $TargetDrive = $Params.TargetDrive
+    $SellerDir = Join-Path $TargetDrive $Params.MainSellerDir
+    $ArchiveDir = Join-Path $SellerDir $Params.TcgExportArchive
+    $UpdatesDir = Join-Path SellerDir $Params.UpdatesDir
+    $UpdatedDir = Join-Path $UpdatesDir $Params.UpdatedDir
     $ParamDiscount = $Params.UsualDiscount
 
     @(
       $DownloadsPath,
+      $TargetDrive,
+      $SellerDir,
+      $ArchiveDir,
       $UpdatesDir,
-      $UpdatedDir
+      $UpdatedDir,
+      $ParamDiscount
     ) | ForEach-Object {
       if ( -not(Test-Path $_) ) {
-        throw ( "Failed to find a needed dir : " + $_ )
+        throw ( "Failed to find a needed path : " + $_ )
       }
     }
 
     $ShippingCost = $Params.ShippingCost -as [double]
     $MinimumPrice = $Params.MinimumPrice -as [double]
 
-    ($ShippingCost, $MinimumPrice) | ForEach-Object {
+    @(
+      $ShippingCost,
+      $MinimumPrice
+    ) | ForEach-Object {
       if ( -not($_) ) {
         throw ( "A needed parameter price was not set in the JSON Params file" )
       }
@@ -44,8 +58,6 @@ function Update-TcgPricing {
     if ( -not($NowSet) ) {
       throw ( "The current set was not listed in the JSON Params file" )
     }
-
-    Write-Host ( "Using current set as: " + $NowSet )
 
     $TcgExportFile = ( Get-ChildItem $DownloadsPath\TCG*Pricing*csv |
       Sort-Object -Descending LastWriteTime | Select-Object -First 1 -ExpandProperty FullName
@@ -59,7 +71,10 @@ function Update-TcgPricing {
       $Discount = $ParamDiscount
     }
 
+    Write-Host ( "Loaded current set as: " + $NowSet )
+    New-BufferLine
     Write-Host "Loading inventory from the CSV file"
+    New-BufferLine
     $InventoryList = Import-CSV $TcgExportFile
 
     $Multiplier = 1
@@ -78,7 +93,15 @@ function Update-TcgPricing {
       $Discount = 0
     }
 
-    Write-Verbose ( "A discount of " + $Discount + " off TCG Market Price will be applied" )
+    $MsgPart01 = "A discount of"
+    $MsgPart02 = "from TCG Market Price will be applied"
+    $VerboMsg = if ( $Discount -ne 0 ) {
+      $MsgPart01 = "No discount"
+      $MsgPart01 + " " + $MsgPart02
+    } else {
+      "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$Discount -as [int] ), $MsgPart02
+    }
+    Write-Verbose $VerboMsg
 
     $TcgKeysHash = @{
       TcgProdName = "Product Name"
@@ -178,7 +201,7 @@ function Update-TcgPricing {
     if ( -not($Result.Creation) ) {
       Write-Warning ( "Failed to create an updated pricing CSV file" )
     } else {
-      Remove-Item $TcgExportFile
+      Move-Item $TcgExportFile $ArchiveDir
       Invoke-Item $UpdatesDir
     }
 

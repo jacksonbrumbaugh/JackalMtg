@@ -1,8 +1,11 @@
 {
-    "CurrentSet" : "Streets of New Capenna",
     "DownloadsDir": "C:\\Users\\jcb55\\Downloads",
-    "UpdatesDir" : "J:\\MTG\\TcgSeller\\PriceUpdates",
-    "UpdatedDir" : "J:\\MTG\\TcgSeller\\PriceUpdates\\Updated",
+    "TargetDrive" : "J:",
+    "MainSellerDir" : "MTG\\TcgSeller",
+    "UpdatesDir" : "PriceUpdates",
+    "UpdatedDir" : "Updated",
+    "TcgExportArchive" : "TcgExportArchive",
+    "CurrentSet" : "Streets of New Capenna",
     "ShippingCost" : "0.87",
     "MinimumPrice" : "0.5",
     "UsualDiscount" : "20"
