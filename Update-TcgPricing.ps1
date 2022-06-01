@@ -23,7 +23,7 @@ function Update-TcgPricing {
     $TargetDrive = $Params.TargetDrive
     $SellerDir = Join-Path $TargetDrive $Params.MainSellerDir
     $ArchiveDir = Join-Path $SellerDir $Params.TcgExportArchive
-    $UpdatesDir = Join-Path SellerDir $Params.UpdatesDir
+    $UpdatesDir = Join-Path $SellerDir $Params.UpdatesDir
     $UpdatedDir = Join-Path $UpdatesDir $Params.UpdatedDir
     $ParamDiscount = $Params.UsualDiscount
 
@@ -33,8 +33,7 @@ function Update-TcgPricing {
       $SellerDir,
       $ArchiveDir,
       $UpdatesDir,
-      $UpdatedDir,
-      $ParamDiscount
+      $UpdatedDir
     ) | ForEach-Object {
       if ( -not(Test-Path $_) ) {
         throw ( "Failed to find a needed path : " + $_ )
@@ -71,7 +70,8 @@ function Update-TcgPricing {
       $Discount = $ParamDiscount
     }
 
-    Write-Host ( "Loaded current set as: " + $NowSet )
+    Write-Host "Loaded current set as:"
+    Write-Host $NowSet
     New-BufferLine
     Write-Host "Loading inventory from the CSV file"
     New-BufferLine
@@ -95,13 +95,14 @@ function Update-TcgPricing {
 
     $MsgPart01 = "A discount of"
     $MsgPart02 = "from TCG Market Price will be applied"
-    $VerboMsg = if ( $Discount -ne 0 ) {
+    $DiscountMsg = if ( $Discount -ne 0 ) {
       $MsgPart01 = "No discount"
       $MsgPart01 + " " + $MsgPart02
     } else {
       "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$Discount -as [int] ), $MsgPart02
     }
-    Write-Verbose $VerboMsg
+    Write-Host $DiscountMsg
+    New-BufferLine
 
     $TcgKeysHash = @{
       TcgProdName = "Product Name"
@@ -113,6 +114,7 @@ function Update-TcgPricing {
     }
 
     Write-Host "Determining pricing for each card in inventory"
+    New-BufferLine
 
     foreach ( $Card in $InventoryList ) {
       $CardName = $Card.($TcgKeysHash.TcgProdName)
@@ -158,6 +160,7 @@ function Update-TcgPricing {
 
       if ( $Warning ) {
         Write-Warning $Warning
+        New-BufferLine
       }
 
       $TargetPrice = if ( $CardSet -eq $NowSet ) {
@@ -180,7 +183,9 @@ function Update-TcgPricing {
       $CheckFilePath = Join-Path $UpdatedDir $UpdatesFileName
       if ( Test-Path $CheckFilePath ) {
         if ( $n -eq 0 ) {
+          Write-Verbose ""
           Write-Host "Determining output file name"
+          New-BufferLine
         }
         $Letter = $ShortAlphabet[$n++]
         $NewStamp = $DateStamp + '.' + $Letter
@@ -191,6 +196,7 @@ function Update-TcgPricing {
     $UpdatesFilePath = Join-Path $UpdatesDir $UpdatesFileName
 
     Write-Host "Exporting updated pricing CSV file"
+    New-BufferLine
     $InventoryList | Export-CSV -NTI -Path $UpdatesFilePath
 
     $Result = [PSCustomObject]@{
@@ -201,7 +207,8 @@ function Update-TcgPricing {
     if ( -not($Result.Creation) ) {
       Write-Warning ( "Failed to create an updated pricing CSV file" )
     } else {
-      Move-Item $TcgExportFile $ArchiveDir
+      Write-Host "Archiving Exported TCG file"
+      Move-Item $TcgExportFile $ArchiveDir -Force
       Invoke-Item $UpdatesDir
     }
 
