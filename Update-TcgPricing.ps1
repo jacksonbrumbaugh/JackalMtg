@@ -95,7 +95,7 @@ function Update-TcgPricing {
 
     $MsgPart01 = "A discount of"
     $MsgPart02 = "from TCG Market Price will be applied"
-    $DiscountMsg = if ( $Discount -ne 0 ) {
+    $DiscountMsg = if ( $Discount -eq 0 ) {
       $MsgPart01 = "No discount"
       $MsgPart01 + " " + $MsgPart02
     } else {
