@@ -178,8 +178,12 @@ function Update-TcgPricing {
     $UpdatesFileName = "UpdatedPricing_{0}.csv" -f $DateStamp
 
     $ShortAlphabet = ('B', 'C', 'D', 'E', 'F')
+    $Letter = $ShortAlphabet[0]
     $n = 0
     do {
+      if ( $Letter -eq $ShortAlphabet[-1] ) {
+        throw "Too many versions of output file have already been created"
+      }
       $CheckFilePath = Join-Path $UpdatedDir $UpdatesFileName
       if ( Test-Path $CheckFilePath ) {
         if ( $n -eq 0 ) {
