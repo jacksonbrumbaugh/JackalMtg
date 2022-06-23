@@ -3,7 +3,11 @@ function Update-TcgPricing {
   param(
     [double]
     [Alias( "D", "Off" )]
-    $Discount
+    $Discount,
+
+    [switch]
+    [Alias("NB", "N")]
+    $NoBracket
   ) #END block::param
 
   begin {
@@ -17,7 +21,7 @@ function Update-TcgPricing {
       throw ( "Failed to find the parameter file : " + $ParamFilePath )
     }
 
-    $Params = (Get-Content $ParamFilePath) | ConvertFrom-JSON
+    $Params = ( Get-Content $ParamFilePath ) | ConvertFrom-JSON
 
     $DownloadsPath = $Params.DownloadsDir
     $TargetDrive = $Params.TargetDrive
@@ -25,7 +29,6 @@ function Update-TcgPricing {
     $ArchiveDir = Join-Path $SellerDir $Params.TcgExportArchive
     $UpdatesDir = Join-Path $SellerDir $Params.UpdatesDir
     $UpdatedDir = Join-Path $UpdatesDir $Params.UpdatedDir
-    $ParamDiscount = $Params.UsualDiscount
 
     @(
       $DownloadsPath,
@@ -40,6 +43,7 @@ function Update-TcgPricing {
       }
     }
 
+    $ParamDiscount = $Params.UsualDiscount
     $ShippingCost = $Params.ShippingCost -as [double]
     $MinimumPrice = $Params.MinimumPrice -as [double]
 
@@ -55,7 +59,8 @@ function Update-TcgPricing {
     $NowSet = $Params.CurrentSet
 
     if ( -not($NowSet) ) {
-      throw ( "The current set was not listed in the JSON Params file" )
+      $NowSet = "N/A"
+      Write-Warning ( "The current set was not listed in the JSON Params file" )
     }
 
     $TcgExportFile = ( Get-ChildItem $DownloadsPath\TCG*Pricing*csv |
@@ -66,10 +71,6 @@ function Update-TcgPricing {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
     }
 
-    if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
-      $Discount = $ParamDiscount
-    }
-
     Write-Host "Loaded current set as:"
     Write-Host $NowSet
     New-BufferLine
@@ -77,31 +78,40 @@ function Update-TcgPricing {
     New-BufferLine
     $InventoryList = Import-CSV $TcgExportFile
 
-    $Multiplier = 1
-
-    if ( $Discount -gt 100 ) {
-      throw "Cannot offer a discount above 100%"
-    }
-
-    if ( $Discount -gt 1 ) {
-      $Discount = $Discount / 100
-    }
-
-    if ( $Discount ) {
-      $Multiplier = 1 - $Discount
+    if ( $NoBracket ) {
+      if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
+        $Discount = $ParamDiscount
+      }
+      
+      $Multiplier = 1
+      
+      if ( $Discount -gt 100 ) {
+        throw "Cannot offer a discount above 100%"
+      }
+      
+      if ( $Discount -gt 1 ) {
+        $Discount = $Discount / 100
+      }
+      
+      if ( $Discount ) {
+        $Multiplier = 1 - $Discount
+      } else {
+        $Discount = 0
+      }
+      
+      $MsgPart01 = "A discount of"
+      $MsgPart02 = "from TCG Market Price will be applied"
+      $DiscountMsg = if ( $Discount -eq 0 ) {
+        $MsgPart01 = "No discount"
+        $MsgPart01 + " " + $MsgPart02
+      } else {
+        "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$Discount -as [int] ), $MsgPart02
+      }
+      Write-Host $DiscountMsg
     } else {
       $Discount = 0
+      Write-Host "Discounts will be applied by a bracketing system"
     }
-
-    $MsgPart01 = "A discount of"
-    $MsgPart02 = "from TCG Market Price will be applied"
-    $DiscountMsg = if ( $Discount -eq 0 ) {
-      $MsgPart01 = "No discount"
-      $MsgPart01 + " " + $MsgPart02
-    } else {
-      "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$Discount -as [int] ), $MsgPart02
-    }
-    Write-Host $DiscountMsg
     New-BufferLine
 
     $TcgKeysHash = @{
@@ -113,7 +123,7 @@ function Update-TcgPricing {
       Qty         = "Total Quantity"
     }
 
-    Write-Host "Determining pricing for each card in inventory"
+    Write-Host "Determining price for each card in inventory"
     New-BufferLine
 
     foreach ( $Card in $InventoryList ) {
@@ -130,7 +140,19 @@ function Update-TcgPricing {
 
       if ( -not($TcgMktPrice) ) {
         Write-Warning ( "Failed to grab TCG Market Price for " + $CardName )
+        New-BufferLine
         continue
+      }
+
+      if ( -not $NoBracket ) {
+        $Discount = switch ( $TcgMktPrice ) {
+          { $_ -gt 15 } { 0.10; break}
+          { $_ -ge 10 } { 0.15; break}
+          { $_ -ge 5  } { 0.20; break}
+          { $_ -ge 1  } { 0.15; break}
+          Default       { 0.10; break}
+        }
+        $Multiplier = 1 - $Discount
       }
 
       $DiscountPrice = [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
@@ -140,15 +162,22 @@ function Update-TcgPricing {
         @{ Type = "Discounted"; Price = $DiscountPrice }
       )
 
+      $WarningFlag = $null
       foreach ( $MinCheck in $MinChecks ) {
-        $Warning = $null
         $CheckPrice = $MinCheck.Price
         $CheckType = $MinCheck.Type
         if ( $CheckPrice -lt $MinimumPrice ) {
-          $Warning = (
-            $CardName + " would have a " + $CheckType  + " price of " + $CheckPrice +
-            " but the min of " + $MinimumPrice + " was used instead"
-          )
+          $WarningFlag = $true
+
+          $Warning = $CardName
+          $Warning += " was set to have a "
+          $Warning += $CheckType
+          $Warning += " price of "
+          $Warning += $CheckPrice
+          $Warning += " but the min of "
+          $Warning +=  $MinimumPrice
+          $Warning += " was used instead"
+
           if ( $CheckType -eq "Discounted" ) {
             $DiscountPrice = $MinimumPrice
           }
@@ -158,7 +187,7 @@ function Update-TcgPricing {
         }
       }
 
-      if ( $Warning ) {
+      if ( $WarningFlag ) {
         Write-Warning $Warning
         New-BufferLine
       }
@@ -211,9 +240,11 @@ function Update-TcgPricing {
     if ( -not($Result.Creation) ) {
       Write-Warning ( "Failed to create an updated pricing CSV file" )
     } else {
-      Write-Host "Archiving Exported TCG file"
-      Move-Item $TcgExportFile $ArchiveDir -Force
-      Invoke-Item $UpdatesDir
+      if ( Test-Path $ArchiveDir ) {
+        Write-Host "Archiving Exported TCG file"
+        Move-Item $TcgExportFile $ArchiveDir -Force
+        Invoke-Item $UpdatesDir
+      }
     }
 
     Write-Output $Result
