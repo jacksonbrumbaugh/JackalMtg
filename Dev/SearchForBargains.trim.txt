@@ -1,0 +1,17 @@
+cd M:\MTG\*sell*\*price*
+cd Update*
+$List = Import-CSV *06-23*
+
+$DigList = $List | % {
+$Low = $_."TCG Low Price" -as [double]
+$Mkt = $_."TCG Market Price" -as [double]
+[PSCustomObject]@{
+CardName = $_."Product Name"
+Set = $_."Set Name"
+DigRatio = [math]::Floor(1000 * $Low / $Mkt) / 1000
+Mkt = $Mkt
+Low = $Low
+}
+}
+
+$DigList.where{ $_.DigRatio -le 0.5 } | Sort -Descending | FT
