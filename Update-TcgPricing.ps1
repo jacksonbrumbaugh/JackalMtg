@@ -144,18 +144,24 @@ function Update-TcgPricing {
         continue
       }
 
+      $FloorFlag = $false
       if ( -not $NoBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
-          { $_ -gt 15 } { 0.10; break}
-          { $_ -ge 10 } { 0.15; break}
-          { $_ -ge 5  } { 0.20; break}
-          { $_ -ge 1  } { 0.15; break}
-          Default       { 0.10; break}
+          { $_ -gt 15  } { 0.10; break }
+          { $_ -ge 10  } { 0.15; break }
+          { $_ -ge 5   } { 0.20; break }
+          { $_ -ge 1   } { 0.15; break }
+          { $_ -ge 0.5 } { 0.10; break }
+          Default        { 1; $FloorFlag = $true; break }
         }
         $Multiplier = 1 - $Discount
       }
 
-      $DiscountPrice = [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
+      $DiscountPrice = if ( -not $FloorFlag ) {
+        [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
+      } else {
+        0.5
+      }
 
       $MinChecks = @(
         @{ Type = "TCG MKT";    Price = $TcgMktPrice },
