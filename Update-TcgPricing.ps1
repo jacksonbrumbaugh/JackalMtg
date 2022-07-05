@@ -147,12 +147,12 @@ function Update-TcgPricing {
       $FloorFlag = $false
       if ( -not $NoBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
-          { $_ -gt 15  } { 0.10; break }
-          { $_ -ge 10  } { 0.15; break }
-          { $_ -ge 5   } { 0.20; break }
-          { $_ -ge 1   } { 0.15; break }
-          { $_ -ge 0.5 } { 0.10; break }
-          Default        { 1; $FloorFlag = $true; break }
+          { $_ -gt 15   } { 0.10; break }
+          { $_ -ge 10   } { 0.15; break }
+          { $_ -ge 5    } { 0.20; break }
+          { $_ -ge 1    } { 0.15; break }
+          { $_ -ge 0.56 } { 0.10; break }
+          Default         { 1; $FloorFlag = $true; break }
         }
         $Multiplier = 1 - $Discount
       }
@@ -204,7 +204,13 @@ function Update-TcgPricing {
         $DiscountPrice
       }
 
-      $NewPrice = [Math]::Max( $TargetPrice, ($TcgLowPrice - $ShippingCost) )
+      $CardShipping = if ( $TcgLowPrice -lt 5 ) {
+        0.99
+      } else {
+        $ShippingCost
+      }
+
+      $NewPrice = [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
     } #END loop::foreach( $Card in $InventoryList )
