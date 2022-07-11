@@ -147,10 +147,9 @@ function Update-TcgPricing {
       $FloorFlag = $false
       if ( -not $NoBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
-          { $_ -gt 15   } { 0.10; break }
-          { $_ -ge 10   } { 0.15; break }
-          { $_ -ge 5    } { 0.20; break }
-          { $_ -ge 1    } { 0.15; break }
+          { $_ -gt 15   } { 0.05; break }
+          { $_ -gt 10   } { 0.10; break }
+          { $_ -gt 1    } { 0.15; break }
           { $_ -ge 0.56 } { 0.10; break }
           Default         { 1; $FloorFlag = $true; break }
         }
