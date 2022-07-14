@@ -29,6 +29,7 @@ function Update-TcgPricing {
     $ArchiveDir = Join-Path $SellerDir $Params.TcgExportArchive
     $UpdatesDir = Join-Path $SellerDir $Params.UpdatesDir
     $UpdatedDir = Join-Path $UpdatesDir $Params.UpdatedDir
+    $HalfOffDir = Join-Path $SellerDir $Params.HalfOffDir
 
     @(
       $DownloadsPath,
@@ -71,13 +72,6 @@ function Update-TcgPricing {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
     }
 
-    Write-Host "Loaded current set as:"
-    Write-Host $NowSet
-    New-BufferLine
-    Write-Host "Loading inventory from the CSV file"
-    New-BufferLine
-    $InventoryList = Import-CSV $TcgExportFile
-
     if ( $NoBracket ) {
       if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
         $Discount = $ParamDiscount
@@ -114,6 +108,22 @@ function Update-TcgPricing {
     }
     New-BufferLine
 
+    $FoundHalfOffList = $false
+    $HalfOFfListPath = Get-ChildItem $HalfOffDir\*Cards*csv
+    if ( $HalfOFfListPath ) {
+      $FoundHalfOffList = $true
+      $HalfOffList = Import-CSV $HalfOFfListPath
+      Write-Host "A half-off list was located & will be applied"
+      New-BufferLine
+    }
+
+    Write-Host "Loaded current set as:"
+    Write-Host $NowSet
+    New-BufferLine
+    Write-Host "Loading inventory from the CSV file"
+    New-BufferLine
+    $InventoryList = Import-CSV $TcgExportFile
+
     $TcgKeysHash = @{
       TcgProdName = "Product Name"
       TcgMktPrice = "TCG Market Price"
@@ -121,6 +131,7 @@ function Update-TcgPricing {
       MyPrice     = "TCG MarketPlace Price"
       SetName     = "Set Name"
       Qty         = "Total Quantity"
+      ID          = "TCGplayer Id"
     }
 
     Write-Host "Determining price for each card in inventory"
@@ -128,6 +139,7 @@ function Update-TcgPricing {
 
     foreach ( $Card in $InventoryList ) {
       $CardName = $Card.($TcgKeysHash.TcgProdName)
+      $CardID = $Card.($TcgKeysHash.ID)
       $TcgMktPrice = $Card.($TcgKeysHash.TcgMktPrice) -as [double]
       $TcgLowPrice = $Card.($TcgKeysHash.TcgLowPrice) -as [double]
       $CardSet = $Card.($TcgKeysHash.SetName)
@@ -156,6 +168,14 @@ function Update-TcgPricing {
         $Multiplier = 1 - $Discount
       }
 
+      $SkipMinMaxChecks = $false
+      if ( $FoundHalfOffList ) {
+        if ( $CardID -in $HalfOffList.($TcgKeysHash.ID) ) {
+          $SkipMinMaxChecks = $true
+          $Multiplier = 0.5
+        }
+      }
+
       $DiscountPrice = if ( -not $FloorFlag ) {
         [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
       } else {
@@ -168,26 +188,28 @@ function Update-TcgPricing {
       )
 
       $WarningFlag = $null
-      foreach ( $MinCheck in $MinChecks ) {
-        $CheckPrice = $MinCheck.Price
-        $CheckType = $MinCheck.Type
-        if ( $CheckPrice -lt $MinimumPrice ) {
-          $WarningFlag = $true
-
-          $Warning = $CardName
-          $Warning += " was set to have a "
-          $Warning += $CheckType
-          $Warning += " price of "
-          $Warning += $CheckPrice
-          $Warning += " but the min of "
-          $Warning +=  $MinimumPrice
-          $Warning += " was used instead"
-
-          if ( $CheckType -eq "Discounted" ) {
-            $DiscountPrice = $MinimumPrice
-          }
-          if ( $CheckType -eq "TCG MKT" ) {
-            $TcgMktPrice = $MinimumPrice
+      if ( -not $SkipMinMaxChecks ) {
+        foreach ( $MinCheck in $MinChecks ) {
+          $CheckPrice = $MinCheck.Price
+          $CheckType = $MinCheck.Type
+          if ( $CheckPrice -lt $MinimumPrice ) {
+            $WarningFlag = $true
+            
+            $Warning = $CardName
+            $Warning += " was set to have a "
+            $Warning += $CheckType
+            $Warning += " price of "
+            $Warning += $CheckPrice
+            $Warning += " but the min of "
+            $Warning +=  $MinimumPrice
+            $Warning += " was used instead"
+            
+            if ( $CheckType -eq "Discounted" ) {
+              $DiscountPrice = $MinimumPrice
+            }
+            if ( $CheckType -eq "TCG MKT" ) {
+              $TcgMktPrice = $MinimumPrice
+            }
           }
         }
       }
@@ -197,10 +219,14 @@ function Update-TcgPricing {
         New-BufferLine
       }
 
-      $TargetPrice = if ( $CardSet -eq $NowSet ) {
-        $TcgMktPrice
-      } else {
+      $TargetPrice = if ( $SkipMinMaxChecks ) {
         $DiscountPrice
+      } else {
+        if ( $CardSet -eq $NowSet ) {
+          $TcgMktPrice
+        } else {
+          $DiscountPrice
+        }
       }
 
       $CardShipping = if ( $TcgLowPrice -lt 5 ) {
@@ -209,7 +235,13 @@ function Update-TcgPricing {
         $ShippingCost
       }
 
-      $NewPrice = [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
+      $NewPrice = if ( $SkipMinMaxChecks ) {
+        Write-Host ( "A half-off discount was applied to " + $CardName  + " from the set " + $CardSet )
+        New-BufferLine
+        $TargetPrice
+      } else {
+        [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
+      }
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
     } #END loop::foreach( $Card in $InventoryList )

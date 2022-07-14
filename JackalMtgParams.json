@@ -5,8 +5,9 @@
     "UpdatesDir" : "PriceUpdates",
     "UpdatedDir" : "Updated",
     "TcgExportArchive" : "TcgExportArchive",
+    "HalfOffDir" : "HalfOffLot",
     "CurrentSet" : "Streets of New Capenna",
-    "ShippingCost" : "0.87",
+    "ShippingCost" : "0.89",
     "MinimumPrice" : "0.37",
     "UsualDiscount" : "20"
 }
