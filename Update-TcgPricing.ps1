@@ -15,13 +15,7 @@ function Update-TcgPricing {
   }
 
   process {
-    $ParamFilePath = Join-Path $PSScriptRoot "JackalMtgParams.json"
-
-    if ( -not(Test-Path $ParamFilePath) ) {
-      throw ( "Failed to find the parameter file : " + $ParamFilePath )
-    }
-
-    $Params = ( Get-Content $ParamFilePath ) | ConvertFrom-JSON
+    $Params = Get-JklMtgParam
 
     $DownloadsPath = $Params.DownloadsDir
     $TargetDrive = $Params.TargetDrive
