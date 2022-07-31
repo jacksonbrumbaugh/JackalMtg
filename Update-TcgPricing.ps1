@@ -63,7 +63,24 @@ function Update-TcgPricing {
     )
 
     if ( -not($TcgExportFile) ) {
+      $ArchivedExportFiles = Get-ChildItem $ArchiveDir | Sort-Object -Descending LastWriteTime
+      $NewestArchivedFileName = $ArchivedExportFiles[0].FullName
+      $NewestArchiveDate = $NewestArchivedFileName -replace ".*Export_(\d*)_.*",'$1'
+      $Today = (Get-Date).ToString("yyyyMMdd")
+
+      if ( $NewestArchiveDate -eq $Today ) {
+        $TcgExportFile = $NewestArchivedFileName
+      }
+    }
+
+    if ( -not($TcgExportFile) ) {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
+    } else {
+      $ExportFileName = (Get-Item $TcgExportFile).Name
+      $ExportDate = $ExportFileName -replace ".*Export_(\d*)_.*",'$1'
+      Write-Host "Exported TCGPlayer file date"
+      $ExportDate
+      New-BufferLine
     }
 
     if ( $NoBracket ) {
@@ -106,6 +123,8 @@ function Update-TcgPricing {
     $HalfOFfListPath = Get-ChildItem $HalfOffDir\*Cards*csv
     if ( $HalfOFfListPath ) {
       $FoundHalfOffList = $true
+      $HalfOffCardsListed = $false
+      $HalfOffCardsList = @()
       $HalfOffList = Import-CSV $HalfOFfListPath
       Write-Host "A half-off list was located & will be applied"
       New-BufferLine
@@ -150,14 +169,18 @@ function Update-TcgPricing {
         continue
       }
 
+      $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - 0.15 ), 2)
       $FloorFlag = $false
       if ( -not $NoBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
-          { $_ -gt 15   } { 0.05; break }
-          { $_ -gt 10   } { 0.10; break }
-          { $_ -gt 1    } { 0.15; break }
-          { $_ -ge 0.56 } { 0.10; break }
-          Default         { 1; $FloorFlag = $true; break }
+          { $_ -gt 15 } { 0.10; break }
+          { $_ -gt 10 } { 0.15; break }
+          { $_ -gt 1  } { 0.20; break }
+          { $_ -ge $BottomPrice } { 0.15; break } # 
+          Default       {
+            $FloorFlag = $true
+            1.00
+          }
         }
         $Multiplier = 1 - $Discount
       }
@@ -166,6 +189,7 @@ function Update-TcgPricing {
       if ( $FoundHalfOffList ) {
         if ( $CardID -in $HalfOffList.($TcgKeysHash.ID) ) {
           $SkipMinMaxChecks = $true
+          $HalfOffCardsListed = $true
           $Multiplier = 0.5
         }
       }
@@ -230,8 +254,9 @@ function Update-TcgPricing {
       }
 
       $NewPrice = if ( $SkipMinMaxChecks ) {
-        Write-Host ( "A half-off discount was applied to " + $CardName  + " from the set " + $CardSet )
-        New-BufferLine
+        $HalfOffCardsList += $CardName  + " from the set " + $CardSet
+        #Write-Host ( "A half-off discount was applied to " + $CardName  + " from the set " + $CardSet )
+        #New-BufferLine
         $TargetPrice
       } else {
         [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
@@ -239,6 +264,15 @@ function Update-TcgPricing {
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
     } #END loop::foreach( $Card in $InventoryList )
+
+    if ( $HalfOffCardsListed ) {
+      Write-Host "The half-off discount as applied to the following cards"
+      $HalfOffCardsList | ForEach-Object {
+        $HalfOffListMsg = " > " + $_
+        Write-Host $HalfOffListMsg
+      }
+      New-BufferLine
+    }
 
     $DateStamp = (Get-Date).ToString("yyyy-MM-dd")
     $UpdatesFileName = "UpdatedPricing_{0}.csv" -f $DateStamp
