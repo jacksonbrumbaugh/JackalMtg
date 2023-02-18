@@ -2,28 +2,41 @@ function Update-TcgPricing {
   [CmdletBinding()]
   param(
     [double]
-    [Alias( "D", "Off" )]
+    [Alias("Off")]
     $Discount,
 
     [switch]
-    [Alias("NB", "N")]
+    [Alias("NB")]
     $NoBracket
   ) #END block::param
 
   begin {
     function New-BufferLine { Write-Host "" }
+
+    $ErrorDetails = @{
+      ErrorAction = "Stop"
+    }
+
+    $StopSellingFileName = "StopSellingList.txt"
   }
 
   process {
     $Params = Get-JklMtgParam
 
-    $DownloadsPath = $Params.DownloadsDir
-    $TargetDrive = $Params.TargetDrive
-    $SellerDir = Join-Path $TargetDrive $Params.MainSellerDir
-    $ArchiveDir = Join-Path $SellerDir $Params.TcgExportArchive
-    $UpdatesDir = Join-Path $SellerDir $Params.UpdatesDir
-    $UpdatedDir = Join-Path $UpdatesDir $Params.UpdatedDir
-    $HalfOffDir = Join-Path $SellerDir $Params.HalfOffDir
+    $UserParams = $Params.($env:Username)
+
+    if ( [string]::IsNullOrEmpty($UserParams) ) {
+      $ErrorDetails.Message = "Failed to find your username ($env:Username) configured in the JackalMtgParams.json file. "
+      Write-Error @ErrorDetails
+    }
+
+    $DownloadsPath = "C:/Users/{0}/Downloads" -f $env:Username
+    $TargetDrive = $UserParams.TargetDrive
+    $SellerDir = Join-Path $TargetDrive $UserParams.MainSellerDir
+    $ArchiveDir = Join-Path $SellerDir $UserParams.TcgExportArchive
+    $UpdatesDir = Join-Path $SellerDir $UserParams.UpdatesDir
+    $UpdatedDir = Join-Path $UpdatesDir $UserParams.UpdatedDir
+    $HalfOffDir = Join-Path $SellerDir $UserParams.HalfOffDir
 
     @(
       $DownloadsPath,
@@ -38,9 +51,9 @@ function Update-TcgPricing {
       }
     }
 
-    $ParamDiscount = $Params.UsualDiscount
-    $ShippingCost = $Params.ShippingCost -as [double]
-    $MinimumPrice = $Params.MinimumPrice -as [double]
+    $ParamDiscount = $UserParams.UsualDiscount
+    $ShippingCost = $UserParams.ShippingCost -as [double]
+    $MinimumPrice = $UserParams.MinimumPrice -as [double]
 
     @(
       $ShippingCost,
@@ -51,7 +64,7 @@ function Update-TcgPricing {
       }
     }
 
-    $NowSet = $Params.CurrentSet
+    $NowSet = $UserParams.CurrentSet
 
     if ( -not($NowSet) ) {
       $NowSet = "N/A"
@@ -62,7 +75,7 @@ function Update-TcgPricing {
       Sort-Object -Descending LastWriteTime | Select-Object -First 1 -ExpandProperty FullName
     )
 
-    if ( -not($TcgExportFile) ) {
+    if ( [string]::IsNullOrEmpty($TcgExportFile) ) {
       $ArchivedExportFiles = Get-ChildItem $ArchiveDir | Sort-Object -Descending LastWriteTime
       $NewestArchivedFileName = $ArchivedExportFiles[0].FullName
       $NewestArchiveDate = $NewestArchivedFileName -replace ".*Export_(\d*)_.*",'$1'
@@ -73,15 +86,15 @@ function Update-TcgPricing {
       }
     }
 
-    if ( -not($TcgExportFile) ) {
+    if ( [string]::IsNullOrEmpty($TcgExportFile) ) {
       throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
-    } else {
-      $ExportFileName = (Get-Item $TcgExportFile).Name
-      $ExportDate = $ExportFileName -replace ".*Export_(\d*)_.*",'$1'
-      Write-Host "Exported TCGPlayer file date"
-      $ExportDate
-      New-BufferLine
     }
+
+    $ExportFileName = (Get-Item $TcgExportFile).Name
+    $ExportDate = $ExportFileName -replace ".*Export_(\d*)_.*",'$1'
+    Write-Host "Exported TCGPlayer file date"
+    $ExportDate
+    New-BufferLine
 
     if ( $NoBracket ) {
       if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
@@ -150,7 +163,9 @@ function Update-TcgPricing {
     Write-Host "Determining price for each card in inventory"
     New-BufferLine
 
-    foreach ( $Card in $InventoryList ) {
+    $StopSellingFile = Join-Path $UpdatesDir $StopSellingFileName
+
+    $UpdatedInventoryArray = foreach ( $Card in $InventoryList ) {
       $CardName = $Card.($TcgKeysHash.TcgProdName)
       $CardID = $Card.($TcgKeysHash.ID)
       $TcgMktPrice = $Card.($TcgKeysHash.TcgMktPrice) -as [double]
@@ -207,10 +222,15 @@ function Update-TcgPricing {
 
       $WarningFlag = $null
       if ( -not $SkipMinMaxChecks ) {
+
         foreach ( $MinCheck in $MinChecks ) {
           $CheckPrice = $MinCheck.Price
           $CheckType = $MinCheck.Type
           if ( $CheckPrice -lt $MinimumPrice ) {
+            if ( -not (Test-Path $StopSellingFile) ) {
+              New-Item $StopSellingFile
+            }
+
             $WarningFlag = $true
             
             $Warning = $CardName
@@ -228,6 +248,8 @@ function Update-TcgPricing {
             if ( $CheckType -eq "TCG MKT" ) {
               $TcgMktPrice = $MinimumPrice
             }
+
+            $CardName | Add-Content -Path $StopSellingFile
           }
         }
       }
@@ -263,6 +285,10 @@ function Update-TcgPricing {
       }
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
+
+      # Output to UpdatedInventoryArray
+      $Card
+
     } #END loop::foreach( $Card in $InventoryList )
 
     if ( $HalfOffCardsListed ) {
@@ -301,7 +327,7 @@ function Update-TcgPricing {
 
     Write-Host "Exporting updated pricing CSV file"
     New-BufferLine
-    $InventoryList | Export-CSV -NTI -Path $UpdatesFilePath
+    $UpdatedInventoryArray | Export-CSV -NTI -Path $UpdatesFilePath
 
     $Result = [PSCustomObject]@{
       FileName = $UpdatesFileName
@@ -319,8 +345,10 @@ function Update-TcgPricing {
     }
 
     Write-Output $Result
+
   } #END block::process
-}
+
+} # End function
 
 <#
 $Aliases_MTG_UpdateTcgPricing = @('UTP')
