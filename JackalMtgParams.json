@@ -1,13 +1,26 @@
 {
-    "DownloadsDir": "C:\\Users\\jcb55\\Downloads",
-    "TargetDrive" : "J:",
-    "MainSellerDir" : "MTG\\TcgSeller",
-    "UpdatesDir" : "PriceUpdates",
-    "UpdatedDir" : "Updated",
-    "TcgExportArchive" : "TcgExportArchive",
-    "HalfOffDir" : "HalfOffLot",
-    "CurrentSet" : "Streets of New Capenna",
-    "ShippingCost" : "0.82",
-    "MinimumPrice" : "0.37",
-    "UsualDiscount" : "20"
+  "JackalTCG": {
+    "TargetDrive": "T:",
+    "MainSellerDir": "TcgSeller",
+    "UpdatesDir": "PriceUpdates",
+    "UpdatedDir": "Updated",
+    "TcgExportArchive": "TcgExportArchive",
+    "HalfOffDir": "HalfOffLot",
+    "CurrentSet": "Phyrexia All Will Be One",
+    "ShippingCost": "0.82",
+    "MinimumPrice": "0.37",
+    "UsualDiscount": "20"
+  },
+  "jcb55": {
+    "TargetDrive": "T:",
+    "MainSellerDir": "TcgSeller",
+    "UpdatesDir": "PriceUpdates",
+    "UpdatedDir": "Updated",
+    "TcgExportArchive": "TcgExportArchive",
+    "HalfOffDir": "HalfOffLot",
+    "CurrentSet": "Phyrexia All Will Be One",
+    "ShippingCost": "0.82",
+    "MinimumPrice": "0.37",
+    "UsualDiscount": "20"
+  }
 }
