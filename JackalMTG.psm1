@@ -8,24 +8,20 @@ $NoExportKeywordArray = @(
   "Support"
 )
 
-foreach ( $Dir in $ChildDirs ) {
-  $DirItem = Get-Item $ModuleRootDir\$Dir
-
-  $CmdScripts = Get-ChildItem -Path $DirItem -Recurse -Include "*.ps1"
-
-  foreach ( $Script in $CmdScripts ) {
-    $ScriptItem = Get-Item $Script
-    $ScriptFullName = $ScriptItem.FullName
+foreach ( $ThisDir in $ChildDirs ) {
+  foreach ( $ThisScript in (Get-ChildItem -Path (Get-Item $ModuleRootDir\$ThisDir) -Include "*.ps1" -Recurse) ) {
+    $ThisScriptItem = Get-Item $ThisScript
+    $ThisScriptFullName = $ThisScriptItem.FullName
 
     # Dot-Sourcing; loads the function as part of the module
-    . $ScriptFullName
+    . $ThisScriptFullName
 
-    $DirName = Split-Path (Split-Path $ScriptFullName) -Leaf
-    $FunctionName = (Split-Path $ScriptFullName -Leaf).replace( '.ps1', '' )
+    $ThisDirName = Split-Path (Split-Path $ThisScriptFullName) -Leaf
+    $FunctionName = (Split-Path $ThisScriptFullName -Leaf).replace( '.ps1', '' )
 
     $doExport = $true
     foreach ( $ThisKeyword in $NoExportKeywordArray ) {
-      if ( $DirName -match $ThisKeyword ) {
+      if ( $ThisDirName -match $ThisKeyword ) {
         $doExport = $false
       }
     }
@@ -35,7 +31,7 @@ foreach ( $Dir in $ChildDirs ) {
       Export-ModuleMember $FunctionName
     }
 
-  } # End block:foreach Script in CmdScripts
+  } # End block:foreach ThisScript
 
 } # End block:foreach Dir in ChildDIrs
 
