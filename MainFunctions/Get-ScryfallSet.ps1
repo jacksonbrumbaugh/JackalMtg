@@ -24,7 +24,15 @@ function Get-ScryfallSet {
             'M21',
             'ZNR',
             'KHM',
-            'NEO'
+            'STX',
+            'AFR',
+            'MID',
+            'VOW',
+            'NEO',
+            'SNC',
+            'DMU',
+            'BRO',
+            'ONE'
         )]
         $Set = 'NEO'
     )
