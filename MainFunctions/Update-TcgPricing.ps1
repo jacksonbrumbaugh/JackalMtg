@@ -1,34 +1,38 @@
+<#
+.SYNOPSIS
+Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
+
+.NOTES
+Created by Jackson Brumbaugh
+Version Code: 2023Feb23-A
+#>
 function Update-TcgPricing {
   [CmdletBinding()]
-  param(
+  param (
     [double]
     [Alias("Off")]
     $Discount,
 
     [switch]
-    [Alias("NB")]
-    $NoBracket
-  ) #END block::param
+    [Alias( "NoBracket", "NB")]
+    $FlatDiscount
+  ) # End block:param
 
   begin {
-    function New-BufferLine { Write-Host "" }
+    function Write-BufferLine { Write-Host "" }
 
     $ErrorDetails = @{
       ErrorAction = "Stop"
     }
 
-    $StopSellingFileName = "StopSellingList.txt"
+    $BelowThresholdFileName = "ListOfCardsBelowSellingThreshold.txt"
   }
 
   process {
-    $Params = Get-JklMtgParam
+    $UserParams = Get-JklMtgParam -Username $env:Username
 
-    $UserParams = $Params.($env:Username)
-
-    if ( [string]::IsNullOrEmpty($UserParams) ) {
-      $ErrorDetails.Message = "Failed to find your username ($env:Username) configured in the JackalMtgParams.json file. "
-      Write-Error @ErrorDetails
-    }
+    Write-Verbose "User parameters"
+    Write-Verbose $UserParams
 
     $DownloadsPath = "C:/Users/{0}/Downloads" -f $env:Username
     $TargetDrive = $UserParams.TargetDrive
@@ -38,16 +42,23 @@ function Update-TcgPricing {
     $UpdatedDir = Join-Path $UpdatesDir $UserParams.UpdatedDir
     $HalfOffDir = Join-Path $SellerDir $UserParams.HalfOffDir
 
-    @(
+    if ( $env:Username) {
+      $DownloadsPath = "C:/Users/Jacka/Downloads"
+    }
+
+    $NeedDirArray = @(
       $DownloadsPath,
       $TargetDrive,
       $SellerDir,
       $ArchiveDir,
       $UpdatesDir,
       $UpdatedDir
-    ) | ForEach-Object {
-      if ( -not(Test-Path $_) ) {
-        throw ( "Failed to find a needed path : " + $_ )
+    )
+    
+    foreach ( $ThisDir in $NeedDirArray ) {
+      if ( -not(Test-Path $ThisDir) ) {
+        $ErrorDetails.Message = "Failed to find the needed directory {0}. " -f $ThisDir
+        Write-Error @ErrorDetails
       }
     }
 
@@ -55,12 +66,15 @@ function Update-TcgPricing {
     $ShippingCost = $UserParams.ShippingCost -as [double]
     $MinimumPrice = $UserParams.MinimumPrice -as [double]
 
-    @(
+    $NeedPriceArray = @(
       $ShippingCost,
       $MinimumPrice
-    ) | ForEach-Object {
-      if ( -not($_) ) {
-        throw ( "A needed parameter price was not set in the JSON Params file" )
+    )
+
+    foreach ( $ThisPrice in $NeedPriceArray ) {
+      if ( ($ThisPrice -as [double]) -eq 0 ) {
+        $ErrorDetails.Message = "Not all price parameters are set in the JackalMtgParams.json file. "
+        Write-Error @ErrorDetails
       }
     }
 
@@ -71,7 +85,8 @@ function Update-TcgPricing {
       Write-Warning ( "The current set was not listed in the JSON Params file" )
     }
 
-    $TcgExportFile = ( Get-ChildItem $DownloadsPath\TCG*Pricing*csv |
+    $TcgExportSearchPhrase = "TCG*Pricing*csv"
+    $TcgExportFile = ( Get-ChildItem $DownloadsPath\$TcgExportSearchPhrase |
       Sort-Object -Descending LastWriteTime | Select-Object -First 1 -ExpandProperty FullName
     )
 
@@ -87,50 +102,55 @@ function Update-TcgPricing {
     }
 
     if ( [string]::IsNullOrEmpty($TcgExportFile) ) {
-      throw ( "Failed to locate a TCG Player Pricing Export CSV file in " + $DownloadsPath )
+      $ErrorDetails.Message = "Failed to find a {0} file in the downloads folder {1}. " -f $TcgExportSearchPhrase, $DownloadsPath
+      Write-Error @ErrorDetails
     }
 
     $ExportFileName = (Get-Item $TcgExportFile).Name
     $ExportDate = $ExportFileName -replace ".*Export_(\d*)_.*",'$1'
     Write-Host "Exported TCGPlayer file date"
     $ExportDate
-    New-BufferLine
+    Write-BufferLine
 
-    if ( $NoBracket ) {
-      if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
-        $Discount = $ParamDiscount
-      }
-      
-      $Multiplier = 1
-      
-      if ( $Discount -gt 100 ) {
-        throw "Cannot offer a discount above 100%"
-      }
-      
-      if ( $Discount -gt 1 ) {
-        $Discount = $Discount / 100
-      }
-      
-      if ( $Discount ) {
-        $Multiplier = 1 - $Discount
+    $DiscountMsg = if ( $FlatDiscount ) {
+      $AppliedDiscount = if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
+        $ParamDiscount
       } else {
-        $Discount = 0
+        $Discount
+      }
+      
+      if ( $AppliedDiscount -gt 100 ) {
+        $ErrorDetails.Message = "Cannot offer a discount above 100%! "
+        Write-Error @ErrorDetails
+      }
+      
+      if ( $AppliedDiscount -gt 1 ) {
+        $AppliedDiscount = $AppliedDiscount / 100
+      }
+      
+      $Multiplier = if ( $AppliedDiscount ) {
+        1 - $AppliedDiscount
+      } else {
+        $AppliedDiscount = 0
+        1
       }
       
       $MsgPart01 = "A discount of"
       $MsgPart02 = "from TCG Market Price will be applied"
-      $DiscountMsg = if ( $Discount -eq 0 ) {
+      if ( $AppliedDiscount -eq 0 ) {
         $MsgPart01 = "No discount"
         $MsgPart01 + " " + $MsgPart02
       } else {
-        "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$Discount -as [int] ), $MsgPart02
+        "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$AppliedDiscount -as [int] ), $MsgPart02
       }
       Write-Host $DiscountMsg
     } else {
       $Discount = 0
-      Write-Host "Discounts will be applied by a bracketing system"
+      "Discounts will be applied by a bracketing system"
     }
-    New-BufferLine
+
+    Write-Host $DiscountMsg
+    Write-BufferLine
 
     $FoundHalfOffList = $false
     $HalfOFfListPath = Get-ChildItem $HalfOffDir\*Cards*csv
@@ -140,14 +160,14 @@ function Update-TcgPricing {
       $HalfOffCardsList = @()
       $HalfOffList = Import-CSV $HalfOFfListPath
       Write-Host "A half-off list was located & will be applied"
-      New-BufferLine
+      Write-BufferLine
     }
 
     Write-Host "Loaded current set as:"
     Write-Host $NowSet
-    New-BufferLine
+    Write-BufferLine
     Write-Host "Loading inventory from the CSV file"
-    New-BufferLine
+    Write-BufferLine
     $InventoryList = Import-CSV $TcgExportFile
 
     $TcgKeysHash = @{
@@ -158,35 +178,50 @@ function Update-TcgPricing {
       SetName     = "Set Name"
       Qty         = "Total Quantity"
       ID          = "TCGplayer Id"
+      PhotoURL    = "Photo URL"
     }
 
     Write-Host "Determining price for each card in inventory"
-    New-BufferLine
+    Write-BufferLine
 
-    $StopSellingFile = Join-Path $UpdatesDir $StopSellingFileName
+    $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
 
+    $CardIndex = -1
     $UpdatedInventoryArray = foreach ( $Card in $InventoryList ) {
+      $CardIndex++
+
       $CardName = $Card.($TcgKeysHash.TcgProdName)
       $CardID = $Card.($TcgKeysHash.ID)
       $TcgMktPrice = $Card.($TcgKeysHash.TcgMktPrice) -as [double]
       $TcgLowPrice = $Card.($TcgKeysHash.TcgLowPrice) -as [double]
       $CardSet = $Card.($TcgKeysHash.SetName)
       $CardQty = $Card.($TcgKeysHash.Qty) -as [int]
+      $CardPic = $Card.($TcgKeysHash.PhotoURL)
 
-      if ( $CardQty -eq 0 ) {
-        Write-Verbose ( "Skipping " + $CardName + " : 0 qty in stock" )
+      if ( [string]::IsNullOrEmpty($CardID) ) {
+        Write-Warning ( "Failed to pull the card ID for {0}, the [{1}] card from the export file" -f $CardName, $CardIndex )
+      }
+
+      # Skip any inventory created via a photo ~ they cause glitches during the import prices step
+      if ( -not [string]::IsNullOrEmpty($CardPic) ) {
+        Write-Verbose ( "Skipping {0} : has a photo" -f $CardName )
         continue
       }
 
-      if ( -not($TcgMktPrice) ) {
-        Write-Warning ( "Failed to grab TCG Market Price for " + $CardName )
-        New-BufferLine
+      if ( $CardQty -eq 0 ) {
+        Write-Verbose ( "Skipping {0} : 0 qty in stock" -f $CardName )
+        continue
+      }
+
+      if ( $TcgMktPrice -eq 0 ) {
+        Write-Warning ( "Failed to find the TCG Market Price for {0}" -f $CardName )
+        Write-BufferLine
         continue
       }
 
       $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - 0.15 ), 2)
       $FloorFlag = $false
-      if ( -not $NoBracket ) {
+      if ( -not $FlatDiscount ) {
         $Discount = switch ( $TcgMktPrice ) {
           { $_ -gt 15 } { 0.10; break }
           { $_ -gt 10 } { 0.15; break }
@@ -227,8 +262,8 @@ function Update-TcgPricing {
           $CheckPrice = $MinCheck.Price
           $CheckType = $MinCheck.Type
           if ( $CheckPrice -lt $MinimumPrice ) {
-            if ( -not (Test-Path $StopSellingFile) ) {
-              New-Item $StopSellingFile
+            if ( -not (Test-Path $BelowThresholdFile) ) {
+              New-Item $BelowThresholdFile
             }
 
             $WarningFlag = $true
@@ -249,14 +284,14 @@ function Update-TcgPricing {
               $TcgMktPrice = $MinimumPrice
             }
 
-            $CardName | Add-Content -Path $StopSellingFile
+            $CardName | Add-Content -Path $BelowThresholdFile
           }
         }
       }
 
       if ( $WarningFlag ) {
         Write-Warning $Warning
-        New-BufferLine
+        Write-BufferLine
       }
 
       $TargetPrice = if ( $SkipMinMaxChecks ) {
@@ -277,8 +312,6 @@ function Update-TcgPricing {
 
       $NewPrice = if ( $SkipMinMaxChecks ) {
         $HalfOffCardsList += $CardName  + " from the set " + $CardSet
-        #Write-Host ( "A half-off discount was applied to " + $CardName  + " from the set " + $CardSet )
-        #New-BufferLine
         $TargetPrice
       } else {
         [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
@@ -297,7 +330,7 @@ function Update-TcgPricing {
         $HalfOffListMsg = " > " + $_
         Write-Host $HalfOffListMsg
       }
-      New-BufferLine
+      Write-BufferLine
     }
 
     $DateStamp = (Get-Date).ToString("yyyy-MM-dd")
@@ -308,14 +341,16 @@ function Update-TcgPricing {
     $n = 0
     do {
       if ( $Letter -eq $ShortAlphabet[-1] ) {
-        throw "Too many versions of output file have already been created"
+        $ErrorDetails.Message = "Too many versions of output file have already been created. "
+        Write-Error @ErrorDetails
       }
+
       $CheckFilePath = Join-Path $UpdatedDir $UpdatesFileName
       if ( Test-Path $CheckFilePath ) {
         if ( $n -eq 0 ) {
           Write-Verbose ""
           Write-Host "Determining output file name"
-          New-BufferLine
+          Write-BufferLine
         }
         $Letter = $ShortAlphabet[$n++]
         $NewStamp = $DateStamp + '.' + $Letter
@@ -326,7 +361,7 @@ function Update-TcgPricing {
     $UpdatesFilePath = Join-Path $UpdatesDir $UpdatesFileName
 
     Write-Host "Exporting updated pricing CSV file"
-    New-BufferLine
+    Write-BufferLine
     $UpdatedInventoryArray | Export-CSV -NTI -Path $UpdatesFilePath
 
     $Result = [PSCustomObject]@{
