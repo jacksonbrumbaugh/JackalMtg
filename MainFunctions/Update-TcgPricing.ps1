@@ -186,6 +186,10 @@ function Update-TcgPricing {
 
     $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
 
+    if ( Test-Path $BelowThresholdFile ) {
+      Set-Content -Path $BelowThresholdFile -Value $null
+    }
+
     $CardIndex = -1
     $UpdatedInventoryArray = foreach ( $Card in $InventoryList ) {
       $CardIndex++
