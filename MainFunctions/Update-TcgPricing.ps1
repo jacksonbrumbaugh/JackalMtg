@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Feb23-A
+Version Code: 2023Feb27-A
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -204,6 +204,7 @@ function Update-TcgPricing {
 
       if ( [string]::IsNullOrEmpty($CardID) ) {
         Write-Warning ( "Failed to pull the card ID for {0}, the [{1}] card from the export file" -f $CardName, $CardIndex )
+        continue
       }
 
       # Skip any inventory created via a photo ~ they cause glitches during the import prices step
