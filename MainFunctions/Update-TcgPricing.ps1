@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Feb27-A
+Version Code: 2023Feb27-B
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -252,7 +252,7 @@ function Update-TcgPricing {
       $DiscountPrice = if ( -not $FloorFlag ) {
         [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
       } else {
-        0.5
+        $MinimumPrice
       }
 
       $MinChecks = @(
