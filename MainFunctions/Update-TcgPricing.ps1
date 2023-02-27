@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Feb27-B
+Version Code: 2023Feb27-C
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -186,8 +186,9 @@ function Update-TcgPricing {
 
     $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
 
+    $ValueAsOfLine = "TCG Market Values as of {0}" -f (Get-Date).ToString( "ddd yyyy.MM.dd" )
     if ( Test-Path $BelowThresholdFile ) {
-      Set-Content -Path $BelowThresholdFile -Value $null
+      Set-Content -Path $BelowThresholdFile -Value $ValueAsOfLine
     }
 
     $CardIndex = -1
@@ -268,11 +269,11 @@ function Update-TcgPricing {
           $CheckType = $MinCheck.Type
           if ( $CheckPrice -lt $MinimumPrice ) {
             if ( -not (Test-Path $BelowThresholdFile) ) {
-              New-Item $BelowThresholdFile
+              $ValueAsOfLine | Set-Content -Path $BelowThresholdFile
             }
 
             $WarningFlag = $true
-            
+
             $Warning = $CardName
             $Warning += " was set to have a "
             $Warning += $CheckType
@@ -281,7 +282,7 @@ function Update-TcgPricing {
             $Warning += " but the min of "
             $Warning +=  $MinimumPrice
             $Warning += " was used instead"
-            
+
             if ( $CheckType -eq "Discounted" ) {
               $DiscountPrice = $MinimumPrice
             }
@@ -289,10 +290,19 @@ function Update-TcgPricing {
               $TcgMktPrice = $MinimumPrice
             }
 
-            $CardName | Add-Content -Path $BelowThresholdFile
-          }
-        }
-      }
+            # 45 arbitrarily chosen
+            $BelowThresholdLine = "{0, -45}: ${1:N2}" -f $CardName, $TcgMktPrice
+
+            $BelowThresholdLine | Add-Content -Path $BelowThresholdFile
+
+            # This should break out of the foreach loop
+            break
+
+          } # End block:if CheckPrice is less than the Minimum selling price
+
+        } # End block:foreach MinCheck
+
+      } # End block:if Checking for below min selling price
 
       if ( $WarningFlag ) {
         Write-Warning $Warning
