@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Feb27-C
+Version Code: 2023Feb28-A
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -290,8 +290,8 @@ function Update-TcgPricing {
               $TcgMktPrice = $MinimumPrice
             }
 
-            # 45 arbitrarily chosen
-            $BelowThresholdLine = "{0, -45}: ${1:N2}" -f $CardName, $TcgMktPrice
+            # 30 arbitrarily chosen
+            $BelowThresholdLine = "{0, -30}: `${1:N2}" -f $CardName, $TcgMktPrice
 
             $BelowThresholdLine | Add-Content -Path $BelowThresholdFile
 
