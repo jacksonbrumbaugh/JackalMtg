@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Mar07-A
+Version Code: 2023Mar07-B
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -262,13 +262,15 @@ function Update-TcgPricing {
       )
 
       $WarningFlag = $null
-      $ThisMinPrice = $null
-      if ( -not $SkipMinMaxChecks ) {
+      $ThisMinPrice = $DiscountPrice
+      if ( $SkipMinMaxChecks ) {
+        # leave room for future feature & avoid a -not in the if statement
+      } else {
 
         foreach ( $MinCheck in $MinChecks ) {
           $CheckPrice = $MinCheck.Price
           $CheckType = $MinCheck.Type
-          if ( $CheckPrice -lt $MinimumPrice ) {
+          if ( $CheckPrice -le $MinimumPrice ) {
             if ( -not (Test-Path $BelowThresholdFile) ) {
               $ValueAsOfLine | Set-Content -Path $BelowThresholdFile
             }
@@ -296,7 +298,7 @@ function Update-TcgPricing {
 
             $BelowThresholdLine | Add-Content -Path $BelowThresholdFile
 
-            # This should break out of the foreach loop
+            # This should break out of the foreach loop since I only care that the price was below 1 of the checked prices
             break
 
           } # End block:if CheckPrice is less than the Minimum selling price
