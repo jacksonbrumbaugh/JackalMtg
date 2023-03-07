@@ -8,8 +8,8 @@
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
-    "ShippingCost": "0.82",
-    "MinimumPrice": "0.37",
+    "ShippingCost": "0.84",
+    "MinimumPrice": "0.46",
     "UsualDiscount": "20"
   },
   "JackalTCG": {
@@ -20,7 +20,7 @@
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
-    "ShippingCost": "0.82",
+    "ShippingCost": "0.84",
     "MinimumPrice": "0.37",
     "UsualDiscount": "20"
   },
@@ -32,7 +32,7 @@
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
-    "ShippingCost": "0.82",
+    "ShippingCost": "0.84",
     "MinimumPrice": "0.37",
     "UsualDiscount": "20"
   }
