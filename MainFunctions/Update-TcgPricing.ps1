@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Feb28-A
+Version Code: 2023Mar07-A
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -262,6 +262,7 @@ function Update-TcgPricing {
       )
 
       $WarningFlag = $null
+      $ThisMinPrice = $null
       if ( -not $SkipMinMaxChecks ) {
 
         foreach ( $MinCheck in $MinChecks ) {
@@ -283,11 +284,11 @@ function Update-TcgPricing {
             $Warning +=  $MinimumPrice
             $Warning += " was used instead"
 
-            if ( $CheckType -eq "Discounted" ) {
-              $DiscountPrice = $MinimumPrice
-            }
-            if ( $CheckType -eq "TCG MKT" ) {
-              $TcgMktPrice = $MinimumPrice
+            $ThisMinPrice = if ( $CardSet -eq $NowSet ) {
+              # Cards from the Now (most recent standard) Set do not get a discount
+              $TcgMktPrice
+            } else {
+              $DiscountPrice
             }
 
             # 30 arbitrarily chosen
@@ -312,11 +313,7 @@ function Update-TcgPricing {
       $TargetPrice = if ( $SkipMinMaxChecks ) {
         $DiscountPrice
       } else {
-        if ( $CardSet -eq $NowSet ) {
-          $TcgMktPrice
-        } else {
-          $DiscountPrice
-        }
+        $ThisMinPrice
       }
 
       $CardShipping = if ( $TcgLowPrice -lt 5 ) {
