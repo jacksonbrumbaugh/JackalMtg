@@ -1,0 +1,5 @@
+2023.03.07
+Inside the param.json file,
+add a key for Universal
+that can hold things like ShippingCost & MinimumPrice
+ya know ... anything not dependent upon the computer being used
