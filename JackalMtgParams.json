@@ -13,6 +13,7 @@
     "UsualDiscount": "20"
   },
   "JackalTCG": {
+    "ComputerName": "JACKSON_YOGA",
     "TargetDrive": "T:",
     "MainSellerDir": "TcgSeller",
     "UpdatesDir": "PriceUpdates",
@@ -21,10 +22,11 @@
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
     "ShippingCost": "0.84",
-    "MinimumPrice": "0.37",
+    "MinimumPrice": "0.46",
     "UsualDiscount": "20"
   },
   "jcb55": {
+    "ComputerName": "",
     "TargetDrive": "J:",
     "MainSellerDir": "MTG/TcgSeller",
     "UpdatesDir": "PriceUpdates",
