@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Mar07-B
+Version Code: 2023Mar08-B
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -42,7 +42,7 @@ function Update-TcgPricing {
     $UpdatedDir = Join-Path $UpdatesDir $UserParams.UpdatedDir
     $HalfOffDir = Join-Path $SellerDir $UserParams.HalfOffDir
 
-    if ( $env:Username) {
+    if ( $env:Username -eq "Jackal Bruit" ) {
       $DownloadsPath = "C:/Users/Jacka/Downloads"
     }
 
@@ -225,36 +225,42 @@ function Update-TcgPricing {
         continue
       }
 
-      $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - 0.15 ), 2)
       $FloorFlag = $false
+      # The discount will be reapplied below
+      $MaxDiscount = 0.4
+      $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - $MaxDiscount ), 2)
       if ( -not $FlatDiscount ) {
         $Discount = switch ( $TcgMktPrice ) {
           { $_ -gt 15 } { 0.10; break }
           { $_ -gt 10 } { 0.15; break }
-          { $_ -gt 1  } { 0.20; break }
-          { $_ -ge $BottomPrice } { 0.15; break } # 
+          { $_ -gt 5  } { 0.20; break }
+          { $_ -gt 1  } { 0.25; break }
+          { $_ -ge $BottomPrice } { $MaxDiscount; break } 
           Default       {
             $FloorFlag = $true
-            1.00
+            0
           }
         }
         $Multiplier = 1 - $Discount
       }
 
-      $SkipMinMaxChecks = $false
+      $ThisCardGetsHalfOff = $false
       if ( $FoundHalfOffList ) {
         if ( $CardID -in $HalfOffList.($TcgKeysHash.ID) ) {
-          $SkipMinMaxChecks = $true
+          $ThisCardGetsHalfOff = $true
           $HalfOffCardsListed = $true
           $Multiplier = 0.5
         }
       }
 
       $DiscountPrice = if ( -not $FloorFlag ) {
+        # Multiply then divide by the 100 to mimic rounding
         [Math]::Floor( 100 * $Multiplier * $TcgMktPrice ) / 100
       } else {
         $MinimumPrice
       }
+
+      $TargetPrice = $DiscountPrice
 
       $MinChecks = @(
         @{ Type = "TCG MKT";    Price = $TcgMktPrice },
@@ -262,36 +268,30 @@ function Update-TcgPricing {
       )
 
       $WarningFlag = $null
-      $ThisMinPrice = $DiscountPrice
-      if ( $SkipMinMaxChecks ) {
-        # leave room for future feature & avoid a -not in the if statement
+      if ( $ThisCardGetsHalfOff ) {
+        # Open for future development ... & to avoid a -not in the IF statement
       } else {
-
         foreach ( $MinCheck in $MinChecks ) {
           $CheckPrice = $MinCheck.Price
           $CheckType = $MinCheck.Type
-          if ( $CheckPrice -le $MinimumPrice ) {
+          # Use strictly less than ... or ull get A TON of warnings
+          if ( $CheckPrice -lt $MinimumPrice ) {
             if ( -not (Test-Path $BelowThresholdFile) ) {
               $ValueAsOfLine | Set-Content -Path $BelowThresholdFile
             }
 
             $WarningFlag = $true
 
+            $TargetPrice = $MinimumPrice
+
             $Warning = $CardName
-            $Warning += " was set to have a "
+            $Warning += " has a "
             $Warning += $CheckType
             $Warning += " price of "
             $Warning += $CheckPrice
             $Warning += " but the min of "
             $Warning +=  $MinimumPrice
-            $Warning += " was used instead"
-
-            $ThisMinPrice = if ( $CardSet -eq $NowSet ) {
-              # Cards from the Now (most recent standard) Set do not get a discount
-              $TcgMktPrice
-            } else {
-              $DiscountPrice
-            }
+            $Warning += " was used instead. "
 
             # 30 arbitrarily chosen
             $BelowThresholdLine = "{0, -30}: `${1:N2}" -f $CardName, $TcgMktPrice
@@ -312,19 +312,19 @@ function Update-TcgPricing {
         Write-BufferLine
       }
 
-      $TargetPrice = if ( $SkipMinMaxChecks ) {
-        $DiscountPrice
-      } else {
-        $ThisMinPrice
+      if ( $CardSet -eq $NowSet ) {
+        # Cards from the Now (most recent standard) Set do not get a discount
+        $TargetPrice = [nath]::Max( $TcgMktPrice, $MinimumPrice )
       }
 
+      # TCG Player mandates that any order total less than $5 must charge a min $0.99 S&H fee
       $CardShipping = if ( $TcgLowPrice -lt 5 ) {
         0.99
       } else {
         $ShippingCost
       }
 
-      $NewPrice = if ( $SkipMinMaxChecks ) {
+      $NewPrice = if ( $ThisCardGetsHalfOff ) {
         $HalfOffCardsList += $CardName  + " from the set " + $CardSet
         $TargetPrice
       } else {
@@ -355,7 +355,7 @@ function Update-TcgPricing {
     $n = 0
     do {
       if ( $Letter -eq $ShortAlphabet[-1] ) {
-        $ErrorDetails.Message = "Too many versions of output file have already been created. "
+        $ErrorDetails.Message = "Too many versions of output file have already been created. Try another day \="
         Write-Error @ErrorDetails
       }
 
@@ -370,6 +370,7 @@ function Update-TcgPricing {
         $NewStamp = $DateStamp + '.' + $Letter
         $UpdatesFileName = $UpdatesFileName -replace $DateStamp, $NewStamp
       }
+
     } while ( Test-Path $CheckFilePath )
 
     $UpdatesFilePath = Join-Path $UpdatesDir $UpdatesFileName
