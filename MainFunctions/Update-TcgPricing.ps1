@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Mar08-B
+Version Code: 2023Mar10-A
 #>
 function Update-TcgPricing {
   [CmdletBinding()]
@@ -42,7 +42,7 @@ function Update-TcgPricing {
     $UpdatedDir = Join-Path $UpdatesDir $UserParams.UpdatedDir
     $HalfOffDir = Join-Path $SellerDir $UserParams.HalfOffDir
 
-    if ( $env:Username -eq "Jackal Bruit" ) {
+    if ( $env:Username -eq "JackalBruit" ) {
       $DownloadsPath = "C:/Users/Jacka/Downloads"
     }
 
