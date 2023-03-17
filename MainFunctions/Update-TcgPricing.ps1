@@ -295,8 +295,8 @@ function Update-TcgPricing {
             $Warning +=  $MinimumPrice
             $Warning += " was used instead. "
 
-            # 30 arbitrarily chosen
-            $BelowThresholdLine = "{0, -30}: `${1:N2}" -f $CardName, $TcgMktPrice
+            # 35 arbitrarily chosen
+            $BelowThresholdLine = "{0, -35}: `${1:N2}" -f $CardName, $TcgMktPrice
 
             $BelowThresholdLine | Add-Content -Path $BelowThresholdFile
 
