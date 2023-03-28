@@ -76,7 +76,7 @@ function Update-TcgPricing {
       }
     }
 
-    $ParamDiscount = $UserParams.UsualDiscount
+    $ParamDiscount = $UserParams.UsualDiscount -as [double]
     $ShippingCost = $UserParams.ShippingCost -as [double]
     $MinimumPrice = $UserParams.MinimumPrice -as [double]
 
@@ -136,6 +136,8 @@ function Update-TcgPricing {
         "*Preset*" { $ParamDiscount }
         "*TcgMkt*" { 0 }
       }
+
+      Write-Verbose "AppliedDiscount is $($AppliedDiscount)"
 
       if ( $AppliedDiscount -gt 100 ) {
         $ErrorDetails.Message = "Cannot offer a discount above 100%! "
