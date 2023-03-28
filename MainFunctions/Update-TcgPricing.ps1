@@ -4,18 +4,32 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Mar16-A
+Version Code: 2023Mar28-A
 #>
 function Update-TcgPricing {
-  [CmdletBinding()]
+  [CmdletBinding( DefaultParameterSetName = "UseBracket")]
   param (
+    [Parameter(
+      Mandatory = $true,
+      ParameterSetName = "UseThisDiscount"
+    )]
     [double]
-    [Alias("Off")]
     $Discount,
 
+    [Parameter(
+      Mandatory = $true,
+      ParameterSetName = "UsePresetDiscount"
+    )]
     [switch]
-    [Alias( "NoBracket", "NB")]
-    $FlatDiscount
+    $PresetDiscount,
+
+    [Parameter(
+      Mandatory = $true,
+      ParameterSetName = "UseTcgMkt"
+    )]
+    [Alias("NoDiscount")]
+    [switch]
+    $FullPrice
   ) # End block:param
 
   begin {
@@ -112,41 +126,44 @@ function Update-TcgPricing {
     $ExportDate
     Write-BufferLine
 
-    $DiscountMsg = if ( $FlatDiscount ) {
-      $AppliedDiscount = if ( -not $PSBoundParameters.ContainsKey('Discount') ) {
-        $ParamDiscount
-      } else {
-        $Discount
+    $UseDiscountBracket = $true
+
+    $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $PresetDiscount -or $FullPrice ) {
+      $UseDiscountBracket = $false
+
+      $AppliedDiscount = switch -Wildcard ( $PSCmdlet.ParameterSetName ) {
+        "*This*"   { $Discount }
+        "*Preset*" { $ParamDiscount }
+        "*TcgMkt*" { 0 }
       }
-      
+
       if ( $AppliedDiscount -gt 100 ) {
         $ErrorDetails.Message = "Cannot offer a discount above 100%! "
         Write-Error @ErrorDetails
       }
-      
+
       if ( $AppliedDiscount -gt 1 ) {
         $AppliedDiscount = $AppliedDiscount / 100
       }
-      
+
       $Multiplier = if ( $AppliedDiscount ) {
         1 - $AppliedDiscount
       } else {
         $AppliedDiscount = 0
         1
       }
-      
+
       $MsgPart01 = "A discount of"
       $MsgPart02 = "from TCG Market Price will be applied"
       if ( $AppliedDiscount -eq 0 ) {
-        $MsgPart01 = "No discount"
-        $MsgPart01 + " " + $MsgPart02
+        "No discount" + " " + $MsgPart02
       } else {
         "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$AppliedDiscount -as [int] ), $MsgPart02
       }
       Write-Host $DiscountMsg
     } else {
       $Discount = 0
-      "Discounts will be applied by a bracketing system"
+      "Discounts will be applied by a bracket system"
     }
 
     Write-Host $DiscountMsg
@@ -229,7 +246,7 @@ function Update-TcgPricing {
       # The discount will be reapplied below
       $MaxDiscount = 0.5
       $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - $MaxDiscount ), 2)
-      if ( -not $FlatDiscount ) {
+      if ( $UseDiscountBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
           { $_ -gt 15 } { 0.10; break }
           { $_ -gt 10 } { 0.15; break }
