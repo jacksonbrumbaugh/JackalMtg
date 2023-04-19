@@ -12,7 +12,7 @@
 RootModule = 'JackalMTG'
 
 # Version number of this module.
-ModuleVersion = '2023.04.15'
+ModuleVersion = '2023.04.18'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
