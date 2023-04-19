@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Mar28-A
+Version Code: 2023Apr18-A
 #>
 function Update-TcgPricing {
   [CmdletBinding( DefaultParameterSetName = "UseBracket")]
@@ -155,6 +155,7 @@ function Update-TcgPricing {
         1
       }
 
+      # Send up to DiscountMsg
       $MsgPart01 = "A discount of"
       $MsgPart02 = "from TCG Market Price will be applied"
       if ( $AppliedDiscount -eq 0 ) {
@@ -162,7 +163,6 @@ function Update-TcgPricing {
       } else {
         "{0} {1:D2}% {2}" -f $MsgPart01, ( 100*$AppliedDiscount -as [int] ), $MsgPart02
       }
-      Write-Host $DiscountMsg
     } else {
       $Discount = 0
       "Discounts will be applied by a bracket system"
@@ -247,7 +247,7 @@ function Update-TcgPricing {
       $FloorFlag = $false
       # The discount will be reapplied below
       $MaxDiscount = 0.5
-      $BottomPrice = [Math]::Round($MinimumPrice / ( 1 - $MaxDiscount ), 2)
+      $BottomPrice = 0.2 # [Math]::Round($MinimumPrice / ( 1 - $MaxDiscount ), 2)
       if ( $UseDiscountBracket ) {
         $Discount = switch ( $TcgMktPrice ) {
           { $_ -gt 15 } { 0.10; break }
@@ -256,7 +256,7 @@ function Update-TcgPricing {
           { $_ -gt 3  } { 0.25; break }
           { $_ -gt 2  } { 0.30; break }
           { $_ -gt 1  } { 0.40; break }
-          { $_ -ge $BottomPrice } { $MaxDiscount; break } 
+          { $_ -ge $BottomPrice } { $MaxDiscount; break }
           Default {
             $FloorFlag = $true
             0
@@ -329,8 +329,8 @@ function Update-TcgPricing {
       } # End block:if Checking for below min selling price
 
       if ( $WarningFlag ) {
-        Write-Warning $Warning
-        Write-BufferLine
+        #Write-Warning $Warning
+        #Write-BufferLine
       }
 
       if ( $CardSet -eq $NowSet ) {
@@ -350,6 +350,17 @@ function Update-TcgPricing {
         $TargetPrice
       } else {
         [Math]::Max( $TargetPrice, ($TcgLowPrice - $CardShipping) )
+      }
+
+      if ( $NewPrice -lt 0.5 ) {
+        $NewPrice = switch ( $NewPrice ) {
+          { $_ -ge 0.2 } {
+            0.2 + 0.05*[math]::Ceiling( ($NewPrice - 0.2)/0.05)
+          }
+          Default {
+            0.2
+          }
+        }
       }
 
       $Card.($TcgKeysHash.MyPrice) = $NewPrice
