@@ -26,9 +26,9 @@
     "UsualDiscount": "20"
   },
   "jcb55": {
-    "ComputerName": "",
-    "TargetDrive": "J:",
-    "MainSellerDir": "MTG/TcgSeller",
+    "ComputerName": "JACKSON_YOGA",
+    "TargetDrive": "T:",
+    "MainSellerDir": "TcgSeller",
     "UpdatesDir": "PriceUpdates",
     "UpdatedDir": "Updated",
     "TcgExportArchive": "TcgExportArchive",
