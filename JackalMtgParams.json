@@ -22,7 +22,7 @@
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
     "ShippingCost": "0.79",
-    "MinimumPrice": "0.46",
+    "MinimumPrice": "0.2",
     "UsualDiscount": "20"
   },
   "jcb55": {
@@ -35,7 +35,7 @@
     "HalfOffDir": "HalfOffLot",
     "CurrentSet": "Phyrexia All Will Be One",
     "ShippingCost": "0.79",
-    "MinimumPrice": "0.37",
+    "MinimumPrice": "0.2",
     "UsualDiscount": "20"
   }
 }
