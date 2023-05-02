@@ -28,9 +28,14 @@ function Get-FullScryfallSet {
             'AFR',
             'MID',
             'VOW',
-            'NEO'
+            'NEO',
+            'SNC',
+            'DMU',
+            'BRO',
+            'ONE',
+            'MOM'
         )]
-        $Set = 'NEO'
+        $Set = 'MOM'
     )
 
 <# Expand to rarity selection
