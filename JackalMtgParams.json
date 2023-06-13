@@ -7,7 +7,20 @@
     "UpdatedDir": "Updated",
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
-    "CurrentSet": "Phyrexia All Will Be One",
+    "CurrentSet": "March of the Machine",
+    "ShippingCost": "0.79",
+    "MinimumPrice": "0.2",
+    "UsualDiscount": "20"
+  },
+  "Jackal Bruit": {
+    "ComputerName": "JACKSON_YOGA",
+    "TargetDrive": "T:",
+    "MainSellerDir": "TcgSeller",
+    "UpdatesDir": "PriceUpdates",
+    "UpdatedDir": "Updated",
+    "TcgExportArchive": "TcgExportArchive",
+    "HalfOffDir": "HalfOffLot",
+    "CurrentSet": "March of the Machine",
     "ShippingCost": "0.79",
     "MinimumPrice": "0.2",
     "UsualDiscount": "20"
@@ -20,22 +33,22 @@
     "UpdatedDir": "Updated",
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
-    "CurrentSet": "Phyrexia All Will Be One",
+    "CurrentSet": "March of the Machine",
     "ShippingCost": "0.79",
-    "MinimumPrice": "0.46",
+    "MinimumPrice": "0.2",
     "UsualDiscount": "20"
   },
   "jcb55": {
-    "ComputerName": "",
-    "TargetDrive": "J:",
-    "MainSellerDir": "MTG/TcgSeller",
+    "ComputerName": "JACKSON_YOGA",
+    "TargetDrive": "T:",
+    "MainSellerDir": "TcgSeller",
     "UpdatesDir": "PriceUpdates",
     "UpdatedDir": "Updated",
     "TcgExportArchive": "TcgExportArchive",
     "HalfOffDir": "HalfOffLot",
-    "CurrentSet": "Phyrexia All Will Be One",
+    "CurrentSet": "March of the Machine",
     "ShippingCost": "0.79",
-    "MinimumPrice": "0.37",
+    "MinimumPrice": "0.2",
     "UsualDiscount": "20"
   }
 }

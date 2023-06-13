@@ -32,9 +32,10 @@ function Get-ScryfallSet {
             'SNC',
             'DMU',
             'BRO',
-            'ONE'
+            'ONE',
+            'MOM'
         )]
-        $Set = 'NEO'
+        $Set = 'MOM'
     )
 
 <# Expand to rarity selection
@@ -92,7 +93,7 @@ https://scryfall.com/search?q=set%3Aneo+%28rarity%3Ac+OR+rarity%3Au+OR+rarity%3A
                     $null
                 }
             }
-            if ([int]$CardParams.Num -lt 275) {
+            if ([int]$CardParams.Num -lt 281) {
                 $Cards += New-Object -TypeName PSObject -Property $CardParams
             }
         }
