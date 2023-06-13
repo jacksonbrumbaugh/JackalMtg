@@ -9,13 +9,15 @@ Version Code: 2023Jun13-A
 function Update-TcgPricing {
   [CmdletBinding( DefaultParameterSetName = "UseTcgMkt")]
   param (
+    <#
     [Parameter(
       Mandatory = $true,
       ParameterSetName = "UseTcgMkt"
-    )]
-    [Alias("NoDiscount")]
-    [switch]
-    $FullPrice,
+      )]
+      [Alias("NoDiscount")]
+      [switch]
+      $FullPrice,
+    #>
 
     [Parameter(
       Mandatory = $true,
@@ -136,7 +138,8 @@ function Update-TcgPricing {
 
     $UseDiscountBracket = $true
 
-    $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $DefaultDiscount -or $FullPrice ) {
+    $UseFullPriceParamSet = $PSCmdlet.ParameterSetName -eq "UseTcgMkt"
+    $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $DefaultDiscount -or $UseFullPriceParamSet ) {
       $UseDiscountBracket = $false
 
       $AppliedDiscount = switch -Wildcard ( $PSCmdlet.ParameterSetName ) {
@@ -208,7 +211,7 @@ function Update-TcgPricing {
       PhotoURL    = "Photo URL"
     }
 
-    Write-Host "Determining price for each card in inventory"
+    Write-Host "Setting price for each card in inventory"
     Write-BufferLine
 
     $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
@@ -343,7 +346,7 @@ function Update-TcgPricing {
 
       if ( $CardSet -eq $NowSet ) {
         # Cards from the Now (most recent standard) Set do not get a discount
-        $TargetPrice = [nath]::Max( $TcgMktPrice, $MinimumPrice )
+        $TargetPrice = [math]::Max( $TcgMktPrice, $MinimumPrice )
       }
 
       # TCG Player mandates that any order total less than $5 must charge a min $0.99 S&H fee
@@ -403,7 +406,7 @@ function Update-TcgPricing {
       if ( Test-Path $CheckFilePath ) {
         if ( $n -eq 0 ) {
           Write-Verbose ""
-          Write-Host "Determining output file name"
+          Write-Host "Setting output file name"
           Write-BufferLine
         }
         $Letter = $ShortAlphabet[$n++]
