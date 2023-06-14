@@ -4,11 +4,28 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Jun07-A
+Version Code: 2023Jun13-A
 #>
 function Update-TcgPricing {
-  [CmdletBinding( DefaultParameterSetName = "UseBracket")]
+  [CmdletBinding( DefaultParameterSetName = "UseTcgMkt")]
   param (
+    <#
+    [Parameter(
+      Mandatory = $true,
+      ParameterSetName = "UseTcgMkt"
+      )]
+      [Alias("NoDiscount")]
+      [switch]
+      $FullPrice,
+    #>
+
+    [Parameter(
+      Mandatory = $true,
+      ParameterSetName = "UseBracket"
+    )]
+    [switch]
+    $Bracket,
+
     [Parameter(
       Mandatory = $true,
       ParameterSetName = "UseThisDiscount"
@@ -18,18 +35,11 @@ function Update-TcgPricing {
 
     [Parameter(
       Mandatory = $true,
-      ParameterSetName = "UsePresetDiscount"
+      ParameterSetName = "UseDefaultDiscount"
     )]
     [switch]
-    $PresetDiscount,
+    $DefaultDiscount
 
-    [Parameter(
-      Mandatory = $true,
-      ParameterSetName = "UseTcgMkt"
-    )]
-    [Alias("NoDiscount")]
-    [switch]
-    $FullPrice
   ) # End block:param
 
   begin {
@@ -128,16 +138,17 @@ function Update-TcgPricing {
 
     $UseDiscountBracket = $true
 
-    $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $PresetDiscount -or $FullPrice ) {
+    $UseFullPriceParamSet = $PSCmdlet.ParameterSetName -eq "UseTcgMkt"
+    $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $DefaultDiscount -or $UseFullPriceParamSet ) {
       $UseDiscountBracket = $false
 
       $AppliedDiscount = switch -Wildcard ( $PSCmdlet.ParameterSetName ) {
         "*This*"   { $Discount }
-        "*Preset*" { $ParamDiscount }
+        "*Default*" { $ParamDiscount }
         "*TcgMkt*" { 0 }
       }
 
-      Write-Verbose "AppliedDiscount is $($AppliedDiscount)"
+      Write-Verbose "AppliedDiscount: $($AppliedDiscount)"
 
       if ( $AppliedDiscount -gt 100 ) {
         $ErrorDetails.Message = "Cannot offer a discount above 100%! "
@@ -157,7 +168,7 @@ function Update-TcgPricing {
 
       # Send up to DiscountMsg
       $MsgPart01 = "A discount of"
-      $MsgPart02 = "from TCG Market Price will be applied"
+      $MsgPart02 = "from TCG Market Price will be applied. "
       if ( $AppliedDiscount -eq 0 ) {
         "No discount" + " " + $MsgPart02
       } else {
@@ -165,7 +176,7 @@ function Update-TcgPricing {
       }
     } else {
       $Discount = 0
-      "Discounts will be applied by a bracket system"
+      "Discounts will be applied by a bracket system. "
     }
 
     Write-Host $DiscountMsg
@@ -200,7 +211,7 @@ function Update-TcgPricing {
       PhotoURL    = "Photo URL"
     }
 
-    Write-Host "Determining price for each card in inventory"
+    Write-Host "Setting price for each card in inventory"
     Write-BufferLine
 
     $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
@@ -395,7 +406,7 @@ function Update-TcgPricing {
       if ( Test-Path $CheckFilePath ) {
         if ( $n -eq 0 ) {
           Write-Verbose ""
-          Write-Host "Determining output file name"
+          Write-Host "Setting output file name"
           Write-BufferLine
         }
         $Letter = $ShortAlphabet[$n++]
