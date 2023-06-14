@@ -4,7 +4,7 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Apr18-A
+Version Code: 2023Jun07-A
 #>
 function Update-TcgPricing {
   [CmdletBinding( DefaultParameterSetName = "UseBracket")]
@@ -335,7 +335,7 @@ function Update-TcgPricing {
 
       if ( $CardSet -eq $NowSet ) {
         # Cards from the Now (most recent standard) Set do not get a discount
-        $TargetPrice = [nath]::Max( $TcgMktPrice, $MinimumPrice )
+        $TargetPrice = [math]::Max( $TcgMktPrice, $MinimumPrice )
       }
 
       # TCG Player mandates that any order total less than $5 must charge a min $0.99 S&H fee
