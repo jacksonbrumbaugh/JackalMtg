@@ -1,0 +1,28 @@
+cd J:
+cd Play*
+$Raw = GC *raw*
+$HashIndex = 0
+$GroupHash = @{}
+$GroupHash[$HashIndex] = @()
+foreach ( $Line in $Raw ) {
+if ( [string]::IsNullOrEmpty($Line) ) {
+$HashIndex++
+$GroupHash[$HashIndex] = @()
+continue
+}
+$GroupHash[$HashIndex] += $Line
+}
+
+$PayOutArray = for ( $n = 1; $n -lt $GroupHash.Keys.Count; $n++ ) {
+$PayOutInfo = $GroupHash[$n]
+[PSCustomObject]@{
+ETA = $PayOutInfo[0]
+Initiated = $PayOutInfo[1]
+Orders = $PayOutInfo[2]
+Sales = $PayOutInfo[3]
+Fees = $PayOutInfo[4]
+Refund = [PSCustomObject]@{ Orders = $PayOutInfo[5]; Fees = $PayOutInfo[6] }
+Adjustments = $PayOutInfo[7]
+PayOut = $PayOutInfo[8]
+}
+}
