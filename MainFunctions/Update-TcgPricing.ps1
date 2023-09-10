@@ -4,12 +4,21 @@ Creates a CSV file of updated card prices to be uploaded to TCGPlayer.com
 
 .NOTES
 Created by Jackson Brumbaugh
-Version Code: 2023Jun13-A
+Version Code: 2023Sep10-JCB
+
+Stretch: [
+  {
+    Name: Call-Out Fuction
+    Desc: [
+      Bundle the {Write-Host __; Write-BufferLine} block into its own function Write-CallOut
+    ]
+  }
+]
 #>
 function Update-TcgPricing {
   [CmdletBinding( DefaultParameterSetName = "UseTcgMkt")]
   param (
-    <#
+    <# Kept using this so much that JCB decided to make it the default use case
     [Parameter(
       Mandatory = $true,
       ParameterSetName = "UseTcgMkt"
@@ -50,6 +59,8 @@ function Update-TcgPricing {
     }
 
     $BelowThresholdFileName = "ListOfCardsBelowSellingThreshold.txt"
+
+    $SelectedParameterSetName = $PSCmdlet.ParameterSetName
   }
 
   process {
@@ -138,11 +149,11 @@ function Update-TcgPricing {
 
     $UseDiscountBracket = $true
 
-    $UseFullPriceParamSet = $PSCmdlet.ParameterSetName -eq "UseTcgMkt"
+    $UseFullPriceParamSet = $SelectedParameterSetName -match "UseTcgMkt"
     $DiscountMsg = if ( $PSBoundParameters.ContainsKey("Discount") -or $DefaultDiscount -or $UseFullPriceParamSet ) {
       $UseDiscountBracket = $false
 
-      $AppliedDiscount = switch -Wildcard ( $PSCmdlet.ParameterSetName ) {
+      $AppliedDiscount = switch -Wildcard ( $SelectedParameterSetName ) {
         "*This*"   { $Discount }
         "*Default*" { $ParamDiscount }
         "*TcgMkt*" { 0 }
@@ -193,10 +204,16 @@ function Update-TcgPricing {
       Write-BufferLine
     }
 
-    Write-Host "Loaded current set as:"
-    Write-Host $NowSet
-    Write-BufferLine
+    # JCB has a hunch more param sets will be added to skip this call-out
+    if ( $SelectedParameterSetName -in ("UseTcgMkt") ) {
+      # This call-out is useful when using a discount EXCEPT FOR the current / most-recent standard legal set   
+      Write-Host "Loaded current set as:"
+      Write-Host $NowSet
+      Write-BufferLine
+    }
+
     Write-Host "Loading inventory from the CSV file"
+    Write-Host "CSV File Name: $($ExportFileName)"
     Write-BufferLine
     $InventoryList = Import-CSV $TcgExportFile
 
@@ -211,7 +228,7 @@ function Update-TcgPricing {
       PhotoURL    = "Photo URL"
     }
 
-    Write-Host "Setting price for each card in inventory"
+    Write-Host "Setting price for each card from inventory"
     Write-BufferLine
 
     $BelowThresholdFile = Join-Path $UpdatesDir $BelowThresholdFileName
@@ -427,6 +444,9 @@ function Update-TcgPricing {
       Creation = Test-Path $UpdatesFilePath
     }
 
+    # Testing if moving this up will prevent the call-out about archiving the TCG Export file
+    Write-Output $Result
+
     if ( -not($Result.Creation) ) {
       Write-Warning ( "Failed to create an updated pricing CSV file" )
     } else {
@@ -437,9 +457,7 @@ function Update-TcgPricing {
       }
     }
 
-    Write-Output $Result
-
-  } #END block::process
+  } # End block:process
 
 } # End function
 
