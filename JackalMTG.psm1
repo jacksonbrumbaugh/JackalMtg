@@ -1,3 +1,7 @@
+<# RULER ----15--------25-----------------------50----------------------------80                 100                 120
+Modified: 2024-03-03
+By: Jackson B
+#>
 $ModuleRootDir = $PSScriptRoot
 $ModuleName = Split-Path $ModuleRootDir -Leaf
 
@@ -41,9 +45,6 @@ foreach ( $Alias in $AliasNames ) {
   # Lets users use / see the alias
   Export-ModuleMember -Alias $Alias
 }
-
-
-
 
 Get-ChildItem $PSScriptRoot\*.ps1 -Exclude $ExcludeList | ForEach-Object {
   . $_.FullName
